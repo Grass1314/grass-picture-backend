@@ -3,13 +3,18 @@ package com.grass.grasspicturebackend.exception;
 import com.grass.grasspicturebackend.common.BaseResponse;
 import com.grass.grasspicturebackend.common.ResultUtils;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.support.DefaultMessageSourceResolvable;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+
+import javax.validation.ConstraintViolationException;
+import java.util.stream.Collectors;
 
 /**
  * 全局异常处理器
  */
-// 环绕且切面注解
+// 环绕切面注解
 @RestControllerAdvice
 @Slf4j
 public class GlobalExceptionHandler {
@@ -36,5 +41,21 @@ public class GlobalExceptionHandler {
     public BaseResponse<?> businessExceptionHandler(RuntimeException e) {
         log.error("RuntimeException", e);
         return ResultUtils.error(ErrorCode.SYSTEM_ERROR, "系统错误");
+    }
+
+    // 处理校验异常
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public BaseResponse<?> handleValidException(MethodArgumentNotValidException ex) {
+        String message = ex.getBindingResult().getAllErrors().stream()
+                .map(DefaultMessageSourceResolvable::getDefaultMessage)
+                .collect(Collectors.joining(" | "));
+        return ResultUtils.error(ErrorCode.PARAMS_ERROR, message);
+    }
+
+    // 处理其他类型校验异常
+    @ExceptionHandler(ConstraintViolationException.class)
+    public BaseResponse<?> handleValidationExceptions(ConstraintViolationException e) {
+        log.error("ConstraintViolationException", e);
+        return ResultUtils.error(ErrorCode.PARAMS_ERROR, e.getConstraintViolations().toString());
     }
 }
